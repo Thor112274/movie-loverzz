@@ -7,7 +7,7 @@ export default async function handler(req, res) {
 
   try {
     const r = await fetch(
-      `https://YOUR-BOT-DOMAIN/resolve?token=${token}`
+      `https://thoughtful-shayne-mlfiles-5730e5e6.koyeb.app/resolve?token=${token}`
     );
 
     if (!r.ok) {

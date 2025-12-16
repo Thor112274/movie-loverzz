@@ -1,23 +1,25 @@
-export default function handler(req, res) {
-  const { url } = req.query;
+export default async function handler(req, res) {
+  const { token } = req.query;
 
-  if (!url) {
-    res.status(400).send("Invalid redirect URL");
-    return;
+  if (!token) {
+    return res.status(400).send("Missing token");
   }
 
-  res.setHeader("Content-Type", "text/html");
+  try {
+    const r = await fetch(
+      `https://YOUR-BOT-DOMAIN/resolve?token=${token}`
+    );
 
-  res.status(200).send(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta http-equiv="refresh" content="0;url=${url}">
-        <title>Redirecting...</title>
-      </head>
-      <body>
-        <p>Redirecting, please wait...</p>
-      </body>
-    </html>
-  `);
+    if (!r.ok) {
+      return res.status(403).send("Invalid or expired link");
+    }
+
+    const data = await r.json();
+
+    res.writeHead(302, { Location: data.url });
+    res.end();
+
+  } catch (e) {
+    res.status(500).send("Server error");
+  }
 }

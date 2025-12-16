@@ -1,0 +1,8 @@
+{
+  "routes": [
+    {
+      "src": "^/api/redirect/(.*)",
+      "dest": "/api/redirect/[...path].js"
+    }
+  ]
+}

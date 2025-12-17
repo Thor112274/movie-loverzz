@@ -1,29 +1,40 @@
-from flask import Flask, request, redirect, abort
-import cloudscraper
+import requests
+from urllib.parse import urlencode
 
 from Thunder.utils.token_store import resolve_token, delete_token
 
-app = Flask(__name__)
 
-@app.route("/api/redirect/<path:any_path>")
-def redirect_handler(any_path):
+def handler(request):
     token = request.args.get("token")
     if not token:
-        abort(403)
+        return {
+            "statusCode": 403,
+            "body": "Missing token"
+        }
 
     short_url = resolve_token(token)
     if not short_url:
-        return "Token expired or invalid", 403
+        return {
+            "statusCode": 403,
+            "body": "Token expired or invalid"
+        }
 
-    # Optional: one-time token
+    # One-time token (optional)
     delete_token(token)
 
-    # Optional: block bots
-    ua = request.headers.get("User-Agent", "").lower()
-    if not ua or "bot" in ua:
-        abort(403)
+    # Follow redirects safely
+    try:
+        r = requests.get(short_url, allow_redirects=True, timeout=10)
+        final_url = r.url
+    except Exception:
+        return {
+            "statusCode": 500,
+            "body": "Redirect failed"
+        }
 
-    scraper = cloudscraper.create_scraper()
-    r = scraper.get(short_url, allow_redirects=True)
-
-    return redirect(r.url, code=302)
+    return {
+        "statusCode": 302,
+        "headers": {
+            "Location": final_url
+        }
+    }

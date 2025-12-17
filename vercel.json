@@ -1,8 +1,7 @@
 {
-  "routes": [
-    {
-      "src": "^/api/redirect/(.*)",
-      "dest": "/api/redirect/[...path].js"
+  "functions": {
+    "api/**/*.py": {
+      "runtime": "python3.10"
     }
-  ]
+  }
 }

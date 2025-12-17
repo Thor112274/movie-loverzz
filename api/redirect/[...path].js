@@ -1,40 +1,42 @@
+import os
+import time
 import requests
-from urllib.parse import urlencode
+from pymongo import MongoClient
 
-from Thunder.utils.token_store import resolve_token, delete_token
+client = MongoClient(os.environ["DATABASE_URL"])
+db = client.get_default_database()
+short_col = db.shortener_tokens_col
 
 
 def handler(request):
     token = request.args.get("token")
     if not token:
-        return {
-            "statusCode": 403,
-            "body": "Missing token"
-        }
+        return {"statusCode": 403, "body": "Missing token"}
 
-    short_url = resolve_token(token)
-    if not short_url:
-        return {
-            "statusCode": 403,
-            "body": "Token expired or invalid"
-        }
+    data = short_col.find_one({"token": token})
+    if not data:
+        return {"statusCode": 403, "body": "Invalid token"}
 
-    # One-time token (optional)
-    delete_token(token)
+    if time.time() > data["expires_at"]:
+        short_col.delete_one({"token": token})
+        return {"statusCode": 403, "body": "Token expired"}
 
-    # Follow redirects safely
+    if data.get("used"):
+        return {"statusCode": 403, "body": "Token already used"}
+
+    # mark used (one-time)
+    short_col.update_one(
+        {"token": token},
+        {"$set": {"used": True}}
+    )
+
     try:
-        r = requests.get(short_url, allow_redirects=True, timeout=10)
+        r = requests.get(data["url"], allow_redirects=True, timeout=10)
         final_url = r.url
     except Exception:
-        return {
-            "statusCode": 500,
-            "body": "Redirect failed"
-        }
+        return {"statusCode": 500, "body": "Redirect failed"}
 
     return {
         "statusCode": 302,
-        "headers": {
-            "Location": final_url
-        }
+        "headers": {"Location": final_url}
     }
